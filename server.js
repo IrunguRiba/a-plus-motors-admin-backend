@@ -1,6 +1,6 @@
 
 const app=require('./src/app');
-const connectMongo=require('../Backend/src/loaders/db')
+const connectMongo=require('./src/loaders/db')
 const dotenv=require('dotenv')
 dotenv.config();
 PORT=process.env.PORT
