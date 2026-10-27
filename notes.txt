@@ -1,0 +1,22 @@
+mv old_file_name new_file_name
+eg mv notes.js notes.txt  // The renames the notes.js to new name notes.txt
+
+paginition-10 cars: 
+http://localhost:4000/api/admin/cars/all?page=2&limit=10
+
+Search
+http://localhost:4000/api/admin/cars/search
+
+Post
+http://localhost:4000/api/admin/cars
+
+Get by id
+http://localhost:4000/api/admin/cars/6ae02bdf464c0b41e2e8b7d8
+
+Post as a get request
+http://localhost:4000/api/admin/cars/find
+{
+    "_id": "6ae02bdf464c0b41e2e8b7d8"
+}
+update:
+http://localhost:4000/api/admin/cars/update
