@@ -1,5 +1,5 @@
 
-const app=require('../Backend/src/app');
+const app=require('./src/app');
 const connectMongo=require('../Backend/src/loaders/db')
 const dotenv=require('dotenv')
 dotenv.config();
