@@ -20,3 +20,5 @@ http://localhost:4000/api/admin/cars/find
 }
 update:
 http://localhost:4000/api/admin/cars/update
+
+delete

@@ -38,6 +38,7 @@ const carSchema = new mongoose.Schema(
       enum: ["inStock", "reserved"],
       default: "inStock",
     },
+    negotiable: {type: Boolean, default: false},
     banks: [{ type: String }],
     documents: [
       {
