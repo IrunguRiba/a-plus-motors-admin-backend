@@ -19,6 +19,37 @@ function readPayload(req) {
   return req.body || {};
 }
 
+/**
+ * Recursively merges `updates` into a loaded mongoose document.
+ * Plain objects merge key-by-key (so `finance: { overrides: { rate: 12 } }`
+ * preserves other overrides and other finance fields).
+ * Arrays, dates, and primitives replace wholesale.
+ */
+function applyUpdates(doc, updates, prefix = '') {
+  for (const [key, value] of Object.entries(updates)) {
+    const path = prefix ? `${prefix}.${key}` : key;
+    const current = doc.get(path);
+
+    const isPlainObject =
+      value &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      !(value instanceof Date);
+
+    const currentIsObject =
+      current &&
+      typeof current === 'object' &&
+      !Array.isArray(current) &&
+      !(current instanceof Date);
+
+    if (isPlainObject && currentIsObject) {
+      applyUpdates(doc, value, path);
+    } else {
+      doc.set(path, value);
+    }
+  }
+}
+
 module.exports = {
   createCar: async (req, res) => {
     try {
@@ -74,6 +105,8 @@ module.exports = {
         query = { stockNo };
       } else if (_id) {
         query = idQuery(_id);
+      } else if (id) {
+        query = idQuery(id);
       } else {
         return res.status(400).json({
           success: false,
@@ -91,20 +124,21 @@ module.exports = {
         });
       }
 
-      const car = await Car.findOneAndUpdate(query, updates, {
-        new: true,
-        runValidators: true,
-      }).lean();
-
+      const car = await Car.findOne(query);
       if (!car) {
         return res.status(404).json({ success: false, message: 'Car not found' });
       }
 
+      applyUpdates(car, updates);
+      await car.save();
+
+      const plain = car.toObject({ virtuals: true });
+
       res.json({
         success: true,
-        stockNo: car.stockNo,
-        _id: car._id,
-        data: car,
+        stockNo: plain.stockNo,
+        _id: plain._id,
+        data: plain,
       });
     } catch (err) {
       if (err.code === 11000) {
@@ -123,6 +157,7 @@ module.exports = {
       res.status(500).json({ success: false, message: err.message });
     }
   },
+
   findAll: async (req, res) => {
     try {
       const { page = 1, limit = 20, sort = '-createdAt' } = req.query || {};
