@@ -41,6 +41,7 @@ const financingSchema = new mongoose.Schema(
       rate:    { type: Number, min: 0, max: 100 },
       deposit: { type: Number, min: 0, max: 100 },
       term:    { type: Number, min: 1 },
+      note:    { type: String },
     },
 
     /* application tracking */
