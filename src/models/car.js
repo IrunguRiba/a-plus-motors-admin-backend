@@ -112,15 +112,17 @@ carSchema.index({ "finance.primaryBank": 1, "finance.active": 1 });
 /* ---------- stock number generation ---------- */
 carSchema.pre("save", async function () {
   if (this.stockNo) return;
+
   const makeInitial = this.make ? this.make.charAt(0).toUpperCase() : "0";
   const modelInitial = this.model ? this.model.charAt(0).toUpperCase() : "0";
-  const engineVal = this.engine !== undefined ? this.engine : "";
   const now = new Date();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const year = String(now.getFullYear()).slice(-2);
+
   const count = await mongoose.model("CarRecord").countDocuments();
   const seq = String(count + 1).padStart(3, "0");
-  this.stockNo = `${makeInitial}-${modelInitial}-${engineVal}-${month}${year}-${seq}`;
+
+  this.stockNo = `${makeInitial}${modelInitial}${month}${year}-${seq}`;
 });
 
 /* ---------- recompute finance on every save ---------- */
