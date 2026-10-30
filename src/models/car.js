@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
-const { FINANCE_BANKS: CATALOGUE_BANKS, partnerFor } = require("../helpers/finance-partners");
-const { computeTerms } = require("../helpers/finance-rules");
+const { FINANCE_BANKS: CATALOGUE_BANKS, partnerFor } = require("../../helpers/finance-partners");
+const { computeTerms } = require("../../helpers/finance-rules");
 
 /* ---------- embedded financing subdocument ---------- */
 const financingSchema = new mongoose.Schema(
