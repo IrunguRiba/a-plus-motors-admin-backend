@@ -50,6 +50,57 @@ function applyUpdates(doc, updates, prefix = '') {
   }
 }
 
+/** The fields that identify a physical car for duplicate detection. */
+const IDENTITY_FIELDS = [
+  'make',
+  'model',
+  'year',
+  'body',
+  'engine',
+  'fuel',
+  'transmission',
+  'drive',
+  'mileage',
+  'colour',
+];
+
+/**
+ * Normalise the identifying fields so that
+ * "Toyota"/"toyota"/" TOYOTA " all compare equal.
+ */
+function fingerprint(data) {
+  return {
+    make:         String(data.make ?? '').trim().toLowerCase(),
+    model:        String(data.model ?? '').trim().toLowerCase(),
+    year:         Number(data.year),
+    body:         String(data.body ?? '').trim().toLowerCase(),
+    engine:       Number(data.engine),
+    fuel:         String(data.fuel ?? '').trim().toLowerCase(),
+    transmission: String(data.transmission ?? '').trim().toLowerCase(),
+    drive:        String(data.drive ?? '').trim().toLowerCase(),
+    mileage:      Number(data.mileage),
+    colour:       String(data.colour ?? '').trim().toLowerCase(),
+  };
+}
+
+/**
+ * Looks for an existing car whose identifying fields all match `data`.
+ * `excludeId` skips the car being updated.
+ *
+ * The `.collation({ strength: 2 })` makes the query case-insensitive so that
+ * a car stored as "Toyota" matches a fingerprint of "toyota", even if the
+ * database hasn't been normalised yet.
+ */
+async function findDuplicate(data, excludeId = null) {
+  const fp = fingerprint(data);
+  const q = { ...fp };
+  if (excludeId) q._id = { $ne: excludeId };
+
+  return Car.findOne(q, '_id stockNo make model year')
+    .collation({ locale: 'en', strength: 2 })
+    .lean();
+}
+
 module.exports = {
   createCar: async (req, res) => {
     try {
@@ -58,6 +109,14 @@ module.exports = {
         return res.status(400).json({
           success: false,
           message: 'Invalid JSON in "data" field',
+        });
+      }
+
+      const dupe = await findDuplicate(data);
+      if (dupe) {
+        return res.status(409).json({
+          success: false,
+          message: `A car with the same make, model, year, body, engine, fuel, transmission, drive, mileage, and colour already exists (stock ${dupe.stockNo}).`,
         });
       }
 
@@ -72,9 +131,10 @@ module.exports = {
       });
     } catch (err) {
       if (err.code === 11000) {
+        const field = Object.keys(err.keyPattern || {})[0] || 'field';
         return res.status(409).json({
           success: false,
-          message: 'Duplicate stockNo',
+          message: `Duplicate ${field === 'stockNo' ? 'stock number' : field}.`,
         });
       }
       if (err.name === 'ValidationError') {
@@ -129,6 +189,30 @@ module.exports = {
         return res.status(404).json({ success: false, message: 'Car not found' });
       }
 
+      const identityTouched = IDENTITY_FIELDS.some((k) => k in updates);
+
+      if (identityTouched) {
+        const merged = {
+          make:         updates.make         ?? car.make,
+          model:        updates.model        ?? car.model,
+          year:         updates.year         ?? car.year,
+          body:         updates.body         ?? car.body,
+          engine:       updates.engine       ?? car.engine,
+          fuel:         updates.fuel         ?? car.fuel,
+          transmission: updates.transmission ?? car.transmission,
+          drive:        updates.drive        ?? car.drive,
+          mileage:      updates.mileage      ?? car.mileage,
+          colour:       updates.colour       ?? car.colour,
+        };
+        const dupe = await findDuplicate(merged, car._id);
+        if (dupe) {
+          return res.status(409).json({
+            success: false,
+            message: `Another car with these details already exists (stock ${dupe.stockNo}).`,
+          });
+        }
+      }
+
       applyUpdates(car, updates);
       await car.save();
 
@@ -142,9 +226,10 @@ module.exports = {
       });
     } catch (err) {
       if (err.code === 11000) {
+        const field = Object.keys(err.keyPattern || {})[0] || 'field';
         return res.status(409).json({
           success: false,
-          message: 'Duplicate stockNo',
+          message: `Duplicate ${field === 'stockNo' ? 'stock number' : field}.`,
         });
       }
       if (err.name === 'ValidationError') {
