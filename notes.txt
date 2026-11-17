@@ -22,3 +22,19 @@ update:
 http://localhost:4000/api/admin/cars/update
 
 delete
+
+
+
+{
+  "userName": "joel riba",
+  "email": "joelriba@gmail.com",
+  "phoneNumber": "+254768793478",
+  "password": "irunguriba123",
+  "role": "admin"
+}
+
+POST   http://localhost:4000/api/requests/privacy
+POST   http://localhost:4000/api/requests/inquiry
+POST   http://localhost:4000/api/requests/financing
+POST   http://localhost:4000/api/requests/trade-in
+POST   http://localhost:4000/api/requests/import
