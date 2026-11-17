@@ -2,12 +2,13 @@ const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 465,
-  secure: false, 
+  port: 587,         
+  secure: false,    
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  family: 4,        
 });
 
 async function sendPasswordReset(email, resetUrl) {
@@ -35,7 +36,7 @@ async function sendPasswordReset(email, resetUrl) {
     return info;
   } catch (error) {
     console.error('[mail] ERROR sending email:', error);
-    throw error; // Re-throw so your controller knows it failed
+    throw error; 
   }
 }
 
