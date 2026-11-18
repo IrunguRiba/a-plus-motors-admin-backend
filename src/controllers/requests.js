@@ -128,21 +128,26 @@ const {
         return serverError(res, "updateRequest", err);
       }
     },
+    const ALL_MODELS = {
+      inquiry: require("../models/inquiry"),
+      contact: require("../models/contact"),
+      // add any other request types that pickModel supports
+    };
+    
     getRequest: async (req, res) => {
       try {
         const { model, type } = pickModel(req);
     
-        if (!model) {
-          return badRequest(res, `Unknown request type: ${type}`);
-        }
-    
-        // ---------- 1. Single lookup by id or code ----------
+        // ---------- 1. Single lookup by id or code (requires a type) ----------
         const byId = req.params.id;
         const byCode = req.params.code;
     
         if (byId || byCode) {
-          const query = byCode ? { code: byCode } : { _id: byId };
+          if (!model) {
+            return badRequest(res, `Unknown request type: ${type}`);
+          }
     
+          const query = byCode ? { code: byCode } : { _id: byId };
           const doc = await model.findOne(query).lean();
     
           if (!doc) return notFound(res);
@@ -150,7 +155,7 @@ const {
           return res.json({ success: true, request: doc });
         }
     
-        // ---------- 2. List / search ----------
+        // ---------- 2. Build filter (shared by single-type and all-types) ----------
         const {
           requestStatus,
           code,
@@ -165,7 +170,6 @@ const {
     
         const filter = {};
     
-        // requestStatus: single or comma-separated
         if (requestStatus) {
           const statuses = String(requestStatus)
             .split(",")
@@ -182,10 +186,8 @@ const {
           filter.requestStatus = { $in: statuses };
         }
     
-        // exact code match
         if (code) filter.code = String(code).trim();
     
-        // free-text search
         if (search) {
           const rx = new RegExp(escapeRegex(String(search).trim()), "i");
           filter.$or = [
@@ -197,7 +199,6 @@ const {
           ];
         }
     
-        // date range on createdAt
         if (startDate || endDate) {
           filter.createdAt = {};
           if (startDate) filter.createdAt.$gte = new Date(startDate);
@@ -208,26 +209,76 @@ const {
           }
         }
     
-        // ---------- pagination ----------
+        // ---------- pagination + sorting ----------
         const pageNum = Math.max(1, parseInt(page, 10) || 1);
         const pageSize = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
         const skip = (pageNum - 1) * pageSize;
     
-        // ---------- sorting ----------
         const allowedSortFields = ["createdAt", "updatedAt", "code", "requestStatus"];
         const sortField = allowedSortFields.includes(sortBy) ? sortBy : "createdAt";
         const sortDir = sortOrder === "asc" ? 1 : -1;
-        const sortQuery = { [sortField]: sortDir };
     
-        const [items, total] = await Promise.all([
-          model
-            .find(filter)
-            .sort(sortQuery)
-            .skip(skip)
-            .limit(pageSize)
-            .lean(),
-          model.countDocuments(filter),
-        ]);
+        // ---------- 3a. Single type list ----------
+        if (model) {
+          const sortQuery = { [sortField]: sortDir };
+    
+          const [items, total] = await Promise.all([
+            model.find(filter).sort(sortQuery).skip(skip).limit(pageSize).lean(),
+            model.countDocuments(filter),
+          ]);
+    
+          return res.json({
+            success: true,
+            count: items.length,
+            total,
+            page: pageNum,
+            totalPages: Math.ceil(total / pageSize) || 0,
+            requests: items,
+          });
+        }
+    
+        // ---------- 3b. All types list (no :type given) ----------
+        const entries = Object.entries(ALL_MODELS);
+    
+        if (entries.length === 0) {
+          return res.json({
+            success: true,
+            count: 0,
+            total: 0,
+            page: pageNum,
+            totalPages: 0,
+            requests: [],
+          });
+        }
+    
+        const perModel = await Promise.all(
+          entries.map(async ([modelType, M]) => {
+            const [docs, count] = await Promise.all([
+              M.find(filter).sort({ [sortField]: sortDir }).lean(),
+              M.countDocuments(filter),
+            ]);
+            return {
+              docs: docs.map((d) => ({ ...d, _requestType: modelType })),
+              count,
+            };
+          })
+        );
+    
+        const allDocs = perModel.flatMap((p) => p.docs);
+        const total = perModel.reduce((sum, p) => sum + p.count, 0);
+    
+        allDocs.sort((a, b) => {
+          const av = a[sortField];
+          const bv = b[sortField];
+          if (av == null && bv == null) return 0;
+          if (av == null) return 1;
+          if (bv == null) return -1;
+          if (av < bv) return -sortDir;
+          if (av > bv) return sortDir;
+          return 0;
+        });
+    
+        const items = allDocs.slice(skip, skip + pageSize);
     
         return res.json({
           success: true,
