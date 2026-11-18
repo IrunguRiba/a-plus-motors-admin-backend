@@ -272,7 +272,6 @@ function normalisePhotos(arr) {
   }
   return arr.map(normalisePhoto);
 }
-
 const tradeInRequestSchema = new mongoose.Schema(
   {
     code: codeField(PREFIX.TRADE_IN),
@@ -345,15 +344,10 @@ const tradeInRequestSchema = new mongoose.Schema(
   { timestamps: true, strict: "throw" }
 );
 
-tradeInRequestSchema.pre("validate", function (next) {
+tradeInRequestSchema.pre("validate", async function () {
   if (Array.isArray(this.photos) && this.photos.length) {
-    try {
-      this.photos = normalisePhotos(this.photos);
-    } catch (err) {
-      return next(err);
-    }
+    this.photos = normalisePhotos(this.photos);
   }
-  next();
 });
 
 tradeInRequestSchema.index({ createdAt: -1 });
