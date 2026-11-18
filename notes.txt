@@ -83,7 +83,12 @@ POST [https://a-plus-motors-admin-backend.onrender.com/api/requests/:type](https
 [https://a-plus-motors-admin-backend.onrender.com/api/requests/privacy](https://a-plus-motors-admin-backend.onrender.com/api/requests/privacy)
 
 [https://a-plus-motors-admin-backend.onrender.com/api/requests/inquiry](https://a-plus-motors-admin-backend.onrender.com/api/requests/inquiry)
-
+GET https://a-plus-motors-admin-backend.onrender.com/api/requests/inquiry
+GET https://a-plus-motors-admin-backend.onrender.com/api/requests/inquiry?requestStatus=Pending&page=1&limit=20
+GET https://a-plus-motors-admin-backend.onrender.com/api/requests/inquiry?search=john&startDate=2024-01-01&endDate=2024-12-31
+GET https://a-plus-motors-admin-backend.onrender.com/api/requests/inquiry?requestStatus=Pending,In%20Progress&sortBy=createdAt&sortOrder=asc
+GET https://a-plus-motors-admin-backend.onrender.com/api/requests/inquiry/id
+GET https://a-plus-motors-admin-backend.onrender.com/api/requests/code/REQ-2024-001
 [https://a-plus-motors-admin-backend.onrender.com/api/requests/financing](https://a-plus-motors-admin-backend.onrender.com/api/requests/financing)
 
 [https://a-plus-motors-admin-backend.onrender.com/api/requests/trade-in](https://a-plus-motors-admin-backend.onrender.com/api/requests/trade-in)
