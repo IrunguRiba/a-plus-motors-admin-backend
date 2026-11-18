@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+
 const REQUEST_STATUS = ["Sent", "Received", "Processing", "Completed"];
 
 const statusField = {
@@ -37,6 +38,7 @@ const PREFIX = {
   TRADE_IN: "TI",
   IMPORT: "IR",
 };
+
 const carSnapshotSchema = new mongoose.Schema(
   {
     name: { type: String, trim: true },
@@ -50,6 +52,21 @@ const carSnapshotSchema = new mongoose.Schema(
   },
   { _id: false }
 );
+
+const CATEGORY_MAP = {
+  REQUEST: "REQUEST",
+  COMMENT: "COMMENT",
+  COMPLAINT: "COMPLAINT",
+  FEEDBACK: "FEEDBACK",
+  FINANCE: "FINANCE",
+  SERVICE: "SERVICE",
+  OTHER: "OTHER",
+  ETC: "ETC",
+  ENQUIRY: "REQUEST",
+  INQUIRY: "REQUEST",
+  GENERAL: "OTHER",
+  "GENERAL ENQUIRY": "OTHER",
+};
 
 const privacyComplaintSchema = new mongoose.Schema(
   {
@@ -68,6 +85,11 @@ const privacyComplaintSchema = new mongoose.Schema(
       ],
       required: true,
       index: true,
+      set: (v) => {
+        if (typeof v !== "string") return v;
+        const key = v.trim().toUpperCase();
+        return CATEGORY_MAP[key] ?? "OTHER";
+      },
     },
     name: { type: String, required: true, trim: true, maxlength: 120 },
     email: {
@@ -78,6 +100,9 @@ const privacyComplaintSchema = new mongoose.Schema(
       match: [/^\S+@\S+\.\S+$/, "Invalid email address"],
     },
     message: { type: String, required: true, trim: true, maxlength: 5000 },
+
+    categoryLabel: { type: String, trim: true },
+    vehicleDetails: { type: String, trim: true },
 
     requestStatus: statusField,
     adminNote: { type: String, trim: true, maxlength: 2000 },
@@ -152,7 +177,7 @@ const financingRequestSchema = new mongoose.Schema(
       enum: ["individual", "company"],
       required: true,
       index: true,
-      alias: "applicantType", 
+      alias: "applicantType",
     },
 
     carId: {
@@ -160,7 +185,7 @@ const financingRequestSchema = new mongoose.Schema(
       ref: "CarRecord",
       index: true,
     },
-    carLink: { type: String, trim: true }, 
+    carLink: { type: String, trim: true },
     carSnapshot: { type: carSnapshotSchema },
 
     name: { type: String, trim: true },
@@ -181,7 +206,7 @@ const financingRequestSchema = new mongoose.Schema(
     amount: {
       type: String,
       trim: true,
-      set: (v) => (v == null || v === "" ? undefined : String(v)), 
+      set: (v) => (v == null || v === "" ? undefined : String(v)),
     },
     period: { type: String, trim: true },
     calculation: {
@@ -196,7 +221,7 @@ const financingRequestSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    strict: "throw", 
+    strict: "throw",
   }
 );
 
@@ -310,7 +335,6 @@ const importRequestSchema = new mongoose.Schema(
 );
 
 importRequestSchema.index({ createdAt: -1 });
-
 
 const PrivacyComplaint = mongoose.model("PrivacyComplaint", privacyComplaintSchema);
 const CarInquiry = mongoose.model("CarInquiry", carInquirySchema);
