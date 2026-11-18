@@ -1,5 +1,3 @@
-
-
 const {
     PrivacyComplaint,
     CarInquiry,
@@ -16,7 +14,6 @@ const MODELS = {
     import: ImportRequest,
 };
 
-
 const TYPE_BY_PREFIX = {
     PC: "privacy",
     CI: "inquiry",
@@ -28,10 +25,18 @@ const TYPE_BY_PREFIX = {
 const ALLOWED_STATUS = ["Sent", "Received", "Processing", "Completed"];
 
 function pickModel(req) {
-    const type = req.params.type || req.body.type;
-    if (type) return { model: MODELS[type], type };
+    const params = req.params || {};
+    const body = req.body || {};
+    const query = req.query || {};
 
-    const code = req.params.code;
+    const rawType = params.type || body.type || query.type;
+
+    if (rawType) {
+        const type = String(rawType).toLowerCase().trim();
+        return { model: MODELS[type], type };
+    }
+
+    const code = params.code || query.code;
     if (code && code.includes("-")) {
         const prefix = code.split("-")[0].toUpperCase();
         const resolved = TYPE_BY_PREFIX[prefix];
@@ -42,16 +47,13 @@ function pickModel(req) {
 }
 
 function metaFrom(req) {
+    const body = req.body || {};
     return {
-        source: req.body.source || "web",
+        source: body.source || "web",
         ip: req.ip,
-        userAgent: req.headers["user-agent"] || undefined,
+        userAgent: req.headers?.["user-agent"] || undefined,
     };
 }
-
-/* ============================================================
-   RESPONSE SHORTCUTS
-   ============================================================ */
 
 function badRequest(res, message, extra) {
     return res.status(400).json({ success: false, message, ...(extra || {}) });
