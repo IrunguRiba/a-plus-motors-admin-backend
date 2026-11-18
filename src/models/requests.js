@@ -1,8 +1,4 @@
 const mongoose = require("mongoose");
-
-// SHARED
-
-
 const REQUEST_STATUS = ["Sent", "Received", "Processing", "Completed"];
 
 const statusField = {
@@ -34,7 +30,6 @@ const codeField = (prefix) => ({
   },
 });
 
-
 const PREFIX = {
   PRIVACY: "PC",
   CAR_INQUIRY: "CI",
@@ -42,11 +37,6 @@ const PREFIX = {
   TRADE_IN: "TI",
   IMPORT: "IR",
 };
-
-
- //  CAR SNAPSHOT (shared by inquiry / financing / trade-in)
- 
-
 const carSnapshotSchema = new mongoose.Schema(
   {
     name: { type: String, trim: true },
@@ -60,10 +50,6 @@ const carSnapshotSchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
-
-  // PRIVACY / COMPLAINT
-
 
 const privacyComplaintSchema = new mongoose.Schema(
   {
@@ -102,10 +88,6 @@ const privacyComplaintSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-
-   //CAR INQUIRY
-
 
 const carInquirySchema = new mongoose.Schema(
   {
@@ -147,9 +129,20 @@ const carInquirySchema = new mongoose.Schema(
 carInquirySchema.index({ createdAt: -1 });
 carInquirySchema.index({ carId: 1, requestStatus: 1 });
 
-
-   //FINANCING REQUEST
-  
+const calculationSchema = new mongoose.Schema(
+  {
+    condition: { type: String, trim: true },
+    price: { type: Number, min: 0 },
+    depositPct: { type: Number, min: 0, max: 100 },
+    deposit: { type: Number, min: 0 },
+    loan: { type: Number, min: 0 },
+    months: { type: Number, min: 0 },
+    rate: { type: Number, min: 0 },
+    monthly: { type: Number, min: 0 },
+    notEligible: { type: Boolean },
+  },
+  { _id: false }
+);
 
 const financingRequestSchema = new mongoose.Schema(
   {
@@ -159,13 +152,17 @@ const financingRequestSchema = new mongoose.Schema(
       enum: ["individual", "company"],
       required: true,
       index: true,
+      alias: "applicantType", 
     },
+
     carId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "CarRecord",
       index: true,
     },
+    carLink: { type: String, trim: true }, 
     carSnapshot: { type: carSnapshotSchema },
+
     name: { type: String, trim: true },
     idNumber: { type: String, trim: true },
     company: { type: String, trim: true },
@@ -181,18 +178,15 @@ const financingRequestSchema = new mongoose.Schema(
     },
     employment: { type: String, trim: true },
     vehicle: { type: String, trim: true },
-    amount: { type: String, trim: true },
+    amount: {
+      type: String,
+      trim: true,
+      set: (v) => (v == null || v === "" ? undefined : String(v)), 
+    },
     period: { type: String, trim: true },
     calculation: {
-      condition: { type: String, trim: true },
-      price: { type: Number, min: 0 },
-      depositPct: { type: Number, min: 0, max: 100 },
-      deposit: { type: Number, min: 0 },
-      loan: { type: Number, min: 0 },
-      months: { type: Number, min: 0 },
-      rate: { type: Number, min: 0 },
-      monthly: { type: Number, min: 0 },
-      notEligible: { type: Boolean },
+      type: calculationSchema,
+      alias: "calculator",
     },
 
     requestStatus: statusField,
@@ -200,14 +194,13 @@ const financingRequestSchema = new mongoose.Schema(
 
     ...metaFields,
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    strict: "throw", 
+  }
 );
 
 financingRequestSchema.index({ createdAt: -1 });
-
-
-   //TRADE-IN REQUEST
-
 
 const tradeInRequestSchema = new mongoose.Schema(
   {
@@ -260,10 +253,6 @@ const tradeInRequestSchema = new mongoose.Schema(
 );
 
 tradeInRequestSchema.index({ createdAt: -1 });
-
-
-   //IMPORT REQUEST
-
 
 const importRequestSchema = new mongoose.Schema(
   {
@@ -324,10 +313,10 @@ importRequestSchema.index({ createdAt: -1 });
 
 
 const PrivacyComplaint = mongoose.model("PrivacyComplaint", privacyComplaintSchema);
-const CarInquiry       = mongoose.model("CarInquiry", carInquirySchema);
+const CarInquiry = mongoose.model("CarInquiry", carInquirySchema);
 const FinancingRequest = mongoose.model("FinancingRequest", financingRequestSchema);
-const TradeInRequest   = mongoose.model("TradeInRequest", tradeInRequestSchema);
-const ImportRequest    = mongoose.model("ImportRequest", importRequestSchema);
+const TradeInRequest = mongoose.model("TradeInRequest", tradeInRequestSchema);
+const ImportRequest = mongoose.model("ImportRequest", importRequestSchema);
 
 module.exports = {
   PrivacyComplaint,
