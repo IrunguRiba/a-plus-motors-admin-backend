@@ -120,3 +120,21 @@ DELETE [https://a-plus-motors-admin-backend.onrender.com/api/admin/users/:id](ht
 
 6. Server Health Check
 GET [https://a-plus-motors-admin-backend.onrender.com/](https://a-plus-motors-admin-backend.onrender.com/)
+
+
+
+{
+    "success": true,
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YWZkMDk1YjM3MmM0MmJiZTY4OWQzNTgiLCJyb2xlIjoiYWRtaW4iLCJ5YXJkIjoibWFpbiIsInVzZXJOYW1lIjoiam9lbCByaWJhIiwiaWF0IjoxNzk0OTY3OTAwLCJleHAiOjE3OTU1NzI3MDB9.kMyz0CJfGqSq-t4jscNLY2JZIy6yv-YYE27z44RaO90",
+    "user": {
+        "_id": "6afd095b372c42bbe689d358",
+        "userName": "joel riba",
+        "email": "joelriba@gmail.com",
+        "phoneNumber": "+254768793478",
+        "yard": "main",
+        "role": "admin",
+        "active": true,
+        "createdAt": "2026-11-18T02:11:39.795Z",
+        "updatedAt": "2026-11-18T02:11:39.795Z"
+    }
+}

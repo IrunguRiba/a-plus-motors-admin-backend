@@ -1,4 +1,5 @@
 const {
+  MODELS: ALL_MODELS,
   ALLOWED_STATUS,
   pickModel,
   metaFrom,
@@ -10,22 +11,6 @@ const {
 } = require("../../helpers/pickModel");
 
 const CarRecord = require("../models/car");
-
-const {
-  PrivacyComplaint,
-  CarInquiry,
-  FinancingRequest,
-  TradeInRequest,
-  ImportRequest,
-} = require("../models/requests");
-
-const ALL_MODELS = {
-  privacy: PrivacyComplaint,
-  inquiry: CarInquiry,
-  financing: FinancingRequest,
-  "trade-in": TradeInRequest,
-  import: ImportRequest,
-};
 
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -45,6 +30,9 @@ module.exports = {
       delete payload.code;
       delete payload.requestStatus;
       delete payload.adminNote;
+      delete payload.isDeleted;
+      delete payload.deletedAt;
+      delete payload.deletedBy;
 
       Object.assign(payload, metaFrom(req));
 
@@ -99,7 +87,10 @@ module.exports = {
         return badRequest(res, "Request id or code is required.");
       }
 
-      const query = byCode ? { code: byCode } : { _id: byId };
+      const query = byCode
+        ? { code: byCode, isDeleted: { $ne: true } }
+        : { _id: byId, isDeleted: { $ne: true } };
+
       const doc = await model.findOne(query);
 
       if (!doc) return notFound(res);
@@ -146,6 +137,111 @@ module.exports = {
     }
   },
 
+  deleteRequest: async (req, res) => {
+    try {
+      const { model, type } = pickModel(req);
+
+      if (!model) {
+        return badRequest(res, `Unknown request type: ${type}`);
+      }
+
+      const byCode = req.params.code;
+      const byId = req.params.id;
+
+      if (!byCode && !byId) {
+        return badRequest(res, "Request id or code is required.");
+      }
+
+      const query = byCode ? { code: byCode } : { _id: byId };
+      const hard = req.query.hard === "true";
+
+      if (hard) {
+        const doc = await model.findOneAndDelete(query).lean();
+
+        if (!doc) return notFound(res);
+
+        return res.json({
+          success: true,
+          message: "Request permanently deleted.",
+          code: doc.code,
+        });
+      }
+
+      const doc = await model.findOne(query);
+
+      if (!doc) return notFound(res);
+
+      if (doc.isDeleted) {
+        return res.json({
+          success: true,
+          message: "Request already archived.",
+          code: doc.code,
+        });
+      }
+
+      doc.isDeleted = true;
+      doc.deletedAt = new Date();
+      if (req.user?._id) doc.deletedBy = req.user._id;
+
+      await doc.save();
+
+      return res.json({
+        success: true,
+        message: "Request archived.",
+        code: doc.code,
+      });
+    } catch (err) {
+      if (err.name === "CastError") {
+        return badRequest(res, "Invalid request id.");
+      }
+      return serverError(res, "deleteRequest", err);
+    }
+  },
+
+  restoreRequest: async (req, res) => {
+    try {
+      const { model, type } = pickModel(req);
+
+      if (!model) {
+        return badRequest(res, `Unknown request type: ${type}`);
+      }
+
+      const byCode = req.params.code;
+      const byId = req.params.id;
+
+      if (!byCode && !byId) {
+        return badRequest(res, "Request id or code is required.");
+      }
+
+      const query = byCode ? { code: byCode } : { _id: byId };
+      const doc = await model.findOne(query);
+
+      if (!doc) return notFound(res);
+
+      doc.isDeleted = false;
+      doc.deletedAt = undefined;
+      doc.deletedBy = undefined;
+
+      if (req.user?._id) {
+        doc.resolvedBy = req.user._id;
+      }
+
+      await doc.save();
+
+      return res.json({
+        success: true,
+        message: "Request restored.",
+        code: doc.code,
+        request: doc,
+      });
+    } catch (err) {
+      if (err.name === "CastError") {
+        return badRequest(res, "Invalid request id.");
+      }
+      return serverError(res, "restoreRequest", err);
+    }
+  },
+
   getRequest: async (req, res) => {
     try {
       const { model, type } = pickModel(req);
@@ -158,7 +254,10 @@ module.exports = {
           return badRequest(res, `Unknown request type: ${type}`);
         }
 
-        const query = byCode ? { code: byCode } : { _id: byId };
+        const query = byCode
+          ? { code: byCode, isDeleted: { $ne: true } }
+          : { _id: byId, isDeleted: { $ne: true } };
+
         const doc = await model.findOne(query).lean();
 
         if (!doc) return notFound(res);
@@ -172,6 +271,7 @@ module.exports = {
         search,
         startDate,
         endDate,
+        includeDeleted,
         page = 1,
         limit = 20,
         sortBy = "createdAt",
@@ -179,6 +279,10 @@ module.exports = {
       } = req.query;
 
       const filter = {};
+
+      if (includeDeleted !== "true") {
+        filter.isDeleted = { $ne: true };
+      }
 
       if (requestStatus) {
         const statuses = String(requestStatus)
