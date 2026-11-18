@@ -321,6 +321,14 @@ const tradeInRequestSchema = new mongoose.Schema(
 
     dayIndex: { type: Number, min: 0, max: 6, default: 1 },
     time: { type: String, trim: true },
+    bookingDay: { type: String, trim: true },
+
+    estimate: {
+      low: { type: Number, min: 0 },
+      offer: { type: Number, min: 0 },
+      high: { type: Number, min: 0 },
+    },
+
     name: { type: String, required: true, trim: true, maxlength: 120 },
     phone: {
       type: String,
